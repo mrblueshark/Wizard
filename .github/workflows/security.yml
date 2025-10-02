@@ -1,0 +1,63 @@
+name: Security Scan & Code Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  security_checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # Fetch depth 0 is needed for analysis tools that scan history
+          fetch-depth: 0
+
+      # --- 1. General Code Security Scanning (CodeQL) ---
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go, python
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+      # --- 2. Secret Scanning (Detects hardcoded credentials) ---
+      # This is crucial for verifying files like security.yml are not checked in
+      - name: Run Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Define specific configuration if needed, e.g., to ignore mock tokens in security.yml
+          # config-path: './.gitleaks.toml' 
+          report-title: 'Secrets Scan Report'
+
+      # --- 3. Dependency Vulnerability Check (Go) ---
+      # Checks Go dependencies for known vulnerabilities
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+        
+      - name: Scan Go Vulnerabilities
+        run: |
+          cd go
+          go mod tidy
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      # --- 4. Dependency Vulnerability Check (Python) ---
+      # Uses the established safety tool for Python dependencies
+      - name: Install Safety Dependency Checker
+        run: pip install safety
+
+      - name: Scan Python Dependencies
+        run: safety check -r analyzer/requirements.txt
