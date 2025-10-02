@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database Service
+  postgres_db:
+    image: postgres:14-alpine
+    container_name: wizard_postgres
+    environment:
+      POSTGRES_USER: wizard
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-securepassword}
+      POSTGRES_DB: wizard_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Optional: Persist data on your local machine
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 2. Key Management Service Wrapper (Placeholder)
+  # This service is needed by the Encryptor/Decryptor
+  kms-wrapper:
+    # We will need a Dockerfile and main.py for this later, but for now it's a simple placeholder
+    build:
+      context: ../kms-wrapper
+      dockerfile: Dockerfile
+    container_name: wizard_kms_wrapper
+    environment:
+      # Mock configuration
+      KMS_VAULT_ADDR: 'http://vault:8200' 
+    restart: on-failure
+
+  # 3. Data Storage Service (Python gRPC Server)
+  storage:
+    build:
+      context: ../storage
+      dockerfile: Dockerfile
+    container_name: wizard_storage
+    # The collector connects to this port (defined in collector/app/config.go)
+    ports:
+      - "50051:50051"
+    environment:
+      # Passes DB credentials to the storage service
+      DB_HOST: postgres_db
+      DB_USER: wizard
+      DB_PASSWORD: ${DB_PASSWORD:-securepassword}
+      KMS_ADDRESS: kms-wrapper:8080 # Matches the address used in storage/app/config.py
+    depends_on:
+      - postgres_db
+      - kms-wrapper
+    restart: on-failure
+
+  # 4. Data Collector Service (Go gRPC Client)
+  collector:
+    build:
+      context: ../collector
+      dockerfile: Dockerfile
+    container_name: wizard_collector
+    environment:
+      # The dispatcher connects to this address (defined in collector/app/config.go)
+      STORAGE_SERVICE_ADDR: storage:50051
+    depends_on:
+      - storage # Ensure storage is ready before collector starts dispatching
+    restart: on-failure
+
+volumes:
+  postgres_data:

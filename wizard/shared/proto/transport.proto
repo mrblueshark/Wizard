@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package transport;
+
+// The service that the collector will call and the storage service will implement
+service DataReceiver {
+  // A simple RPC to send a single Packet to the storage service.
+  rpc StorePacket(Packet) returns (StoreResponse);
+}
+
+// The core data unit captured by the collector.
+message Packet {
+  string id = 1;                  // Unique ID for the packet (e.g., UUID)
+  int64 timestamp_ms = 2;         // Capture timestamp in milliseconds
+  string source_ip = 3;
+  string destination_ip = 4;
+  bytes payload = 5;              // The raw data captured (will be encrypted later)
+}
+
+// The response from the storage service after trying to store a packet.
+message StoreResponse {
+  bool success = 1;
+  string message = 2;             // Human-readable message (e.g., "Stored successfully")
+  string stored_id = 3;           // The ID under which the data was stored
+}
