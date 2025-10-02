@@ -1,3 +1,5 @@
+# Wizard/scripts/build.sh
+
 #!/bin/bash
 # Description: Script to build the Docker images for the Go Collector and Python Analyzer microservices.
 
@@ -14,20 +16,21 @@ echo "=========================================================="
 
 # --- 1. Build Go Collector Image ---
 echo "--- Building Go Collector Image: ${GO_IMAGE}:${TAG} ---"
-# Note: Docker will use the go/Dockerfile
-docker build -t ${GO_IMAGE}:${TAG} .
+# Explicitly use the 'go' directory as the context and the specific Dockerfile path.
+# Assuming the script is run from the project root (Wizard/)
+docker build -t ${GO_IMAGE}:${TAG} -f go/Dockerfile . 
 
 echo "✅ Go Collector image built successfully."
 
 # --- 2. Build Python Analyzer Image ---
 echo "--- Building Python Analyzer Image: ${PYTHON_IMAGE}:${TAG} ---"
-# Note: Docker will use the analyzer/Dockerfile (or python/analyzer/Dockerfile)
-# Assuming the root context '.' is sufficient, and the path is configured correctly in the Dockerfile
-docker build -t ${PYTHON_IMAGE}:${TAG} .
+# Explicitly use the 'python' directory as the context (if structure is Wizard/python/...) 
+# OR use the root context and specify the Dockerfile.
+# We will use the original Dockerfile path for consistency:
+docker build -t ${PYTHON_IMAGE}:${TAG} -f analyzer/Dockerfile .
 
 echo "✅ Python Analyzer image built successfully."
 
 echo "=========================================================="
-echo " Build Process Complete."
-echo " Images available: ${GO_IMAGE}:${TAG} and ${PYTHON_IMAGE}:${TAG}"
+echo " Build Process Complete. Commit this fix and push again!"
 echo "=========================================================="
