@@ -1,5 +1,0 @@
-This will be replaced with actual dependencies like 'hvac' (for Vault) or
-'google-cloud-kms' based on the specific KMS chosen.
-For now, we only need a web server dependency for basic setup.
-uvicorn
-fastapi

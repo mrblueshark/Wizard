@@ -1,0 +1,54 @@
+# File: config/prod/config.yaml
+
+# -------------------------------------------------------------------
+# Global Application Settings
+# -------------------------------------------------------------------
+app:
+  environment: "production"
+  log_level: "INFO"
+  # Base URL for the public-facing API
+  api_base_url: "https://api.wizard-prod.com" 
+  
+# -------------------------------------------------------------------
+# Go Collector Service Configuration
+# -------------------------------------------------------------------
+collector:
+  # Internal port where the collector service listens for health checks or gRPC
+  port: 8080
+  
+  # Kafka/Message Queue Configuration (where events are ingested from)
+  kafka:
+    brokers:
+      - "kafka-prod-01:9092"
+      - "kafka-prod-02:9092"
+    input_topic: "raw_events_prod"
+    # Topic for processed events to be read by the Python Analyzer
+    output_topic: "processed_events_prod" 
+    group_id: "collector-group-prod"
+    
+  # Rate Limiting configuration for internal APIs
+  rate_limit:
+    enabled: true
+    max_per_second: 5000 
+
+# -------------------------------------------------------------------
+# Python Analyzer/API Service Configuration
+# -------------------------------------------------------------------
+analyzer:
+  # Internal port for the Python FastAPI server
+  port: 8000
+  
+  # Database Configuration (PostgreSQL used for final analysis results)
+  database:
+    type: "postgres"
+    host: "postgres-prod.svc.cluster.local" # Internal Kubernetes service name
+    port: 5432
+    # NOTE: Username and Password should be read from secrets.yaml/Kubernetes Secrets, 
+    # NOT stored directly here. This placeholder serves as a reminder.
+    # user: ${DB_USER} 
+    # password: ${DB_PASSWORD}
+    
+  # External Service Endpoint (for machine learning models or third-party APIs)
+  external_api:
+    url: "http://ml-model-service.internal:8081/analyze"
+    timeout_seconds: 5

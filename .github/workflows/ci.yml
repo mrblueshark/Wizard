@@ -1,0 +1,76 @@
+# File: .github/workflows/ci.yml
+
+name: CI - Build, Test & Lint
+
+# Triggers the workflow on push or pull request events for the main branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# A single job named 'build-and-test' that runs on an Ubuntu machine
+jobs:
+  build-and-test:
+    name: Build and Test Wizard Services
+    runs-on: ubuntu-latest
+    
+    # Define steps to execute
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # ----------------------------------------------------
+    # 1. Setup and Test the Go Collector Service
+    # ----------------------------------------------------
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21' # Use the specified Go version
+
+    - name: Change to Go Directory
+      run: cd go
+
+    - name: Go Dependencies (go mod download)
+      run: go mod download
+      working-directory: go # Run this command in the go/ directory
+
+    - name: Run Go Unit Tests
+      run: go test -v ./...
+      working-directory: go
+
+    - name: Run Go Linter (golangci-lint)
+      # Uses a pre-built action for efficient linting
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: v1.55 # Use a specific linter version
+        working-directory: go
+        # Only run linting on the Go code
+        args: --path ./... 
+
+    # ----------------------------------------------------
+    # 2. Setup and Test the Python API Service
+    # ----------------------------------------------------
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Use the specified Python version
+
+    - name: Install Python Dependencies
+      # Install dependencies from requirements.txt
+      run: pip install --no-cache-dir -r requirements.txt
+      working-directory: python
+
+    - name: Run Python Unit Tests (using pytest)
+      # Assumes you use pytest and your test files follow the standard naming convention
+      run: |
+        pip install pytest
+        pytest shared/tests/ test_core.py
+      working-directory: python/shared/
+
+    - name: Run Python Linter (flake8)
+      # Lint all python code inside the python directory
+      run: |
+        pip install flake8
+        flake8 .
+      working-directory: python

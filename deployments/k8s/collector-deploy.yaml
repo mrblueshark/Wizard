@@ -1,0 +1,85 @@
+# File: deployments/k8s/collector-deploy.yaml
+
+---
+# 1. Kubernetes Deployment
+# Manages the desired state for the collector service pods.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wizard-collector-deployment
+  labels:
+    app: wizard
+    service: collector
+spec:
+  # Run 3 replicas for high availability (HA)
+  replicas: 3
+  selector:
+    matchLabels:
+      service: collector
+  template:
+    metadata:
+      labels:
+        app: wizard
+        service: collector
+    spec:
+      containers:
+      - name: wizard-collector
+        # NOTE: Replace 'your-registry/wizard-collector:latest' with your actual image
+        image: wizard-collector:latest 
+        imagePullPolicy: IfNotPresent
+        
+        # Define environment variables, potentially reading from a ConfigMap or Secret
+        envFrom:
+        - configMapRef:
+            name: wizard-configmap # References 'configmap.yaml'
+        - secretRef:
+            name: wizard-secrets   # References 'secrets.yaml'
+
+        ports:
+        # Assuming the Go collector service exposes a port (e.g., 8080) for health checks or gRPC/HTTP input
+        - containerPort: 8080 
+          name: http-input
+          
+        # Liveness and Readiness probes are crucial for a stable microservice
+        livenessProbe:
+          httpGet:
+            path: /health # Assuming the Go service has a simple health endpoint
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          
+        resources:
+          limits:
+            cpu: "500m"  # 0.5 CPU core maximum
+            memory: "512Mi" # 512 Megabytes maximum
+          requests:
+            cpu: "250m"  # 0.25 CPU core minimum guarantee
+            memory: "256Mi" # 256 Megabytes minimum guarantee
+
+---
+# 2. Kubernetes Service
+# Exposes the collector pods internally within the cluster using a stable DNS name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wizard-collector-service
+  labels:
+    app: wizard
+    service: collector
+spec:
+  # ClusterIP means the service is only reachable from inside the Kubernetes cluster
+  type: ClusterIP
+  selector:
+    service: collector # Selects the pods created by the Deployment above
+  ports:
+    # Service port (80) maps to the container port (8080)
+    - port: 80 
+      targetPort: http-input
+      protocol: TCP
+      name: http-collector

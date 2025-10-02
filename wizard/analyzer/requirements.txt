@@ -1,4 +1,0 @@
-psycopg2-binary  # For Postgres DB connection
-cryptography     # For AES-GCM decryption
-grpcio           # If we decide to use gRPC for KMS-Wrapper communication
-pandas           # Useful for data analysis and querying (mocking the DSL engine)

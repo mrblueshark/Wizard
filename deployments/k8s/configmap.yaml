@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wizard-configmap
+  labels:
+    app: wizard
+data:
+  # --- Global Settings ---
+  # Environment (will be read by both Go and Python services)
+  WIZARD_ENV: "production"
+  WIZARD_LOG_LEVEL: "INFO"
+
+  # --- Collector (Go Service) Settings ---
+  # Kafka brokers use the internal Kubernetes service name, not localhost
+  KAFKA_BROKERS: "kafka-cluster-svc:9092" 
+  KAFKA_INPUT_TOPIC: "raw_events_prod"
+  KAFKA_OUTPUT_TOPIC: "processed_events_prod" # Events for the Analyzer
+
+  # Rate limiting threshold
+  COLLECTOR_MAX_RATE_TPS: "5000"
+
+  # --- Analyzer (Python Service) Settings ---
+  # Internal service discovery endpoint for the ML Model/External Service
+  ML_MODEL_API_URL: "http://ml-model-service.internal.svc.cluster.local:8081/analyze"
+  
+  # Database details (Note: Sensitive credentials like password go in a Secret)
+  DB_HOST: "postgres-prod.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "wizard_db_prod"
+

@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - wizard-net
+    restart: always
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - wizard-net
+    restart: always
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_INTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - wizard-net
+    restart: always
+
+  collector:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: collector
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_OUTPUT_TOPIC: events
+    depends_on:
+      - kafka
+    networks:
+      - wizard-net
+    restart: on-failure
+
+  analyzer:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    container_name: analyzer
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_INPUT_TOPIC: events
+      MONGO_URI: mongodb://mongo:27017/
+    depends_on:
+      - kafka
+      - mongo
+    networks:
+      - wizard-net
+    restart: on-failure
+
+volumes:
+  mongo_data:
+
+networks:
+  wizard-net:
+    driver: bridge

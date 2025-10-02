@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-10-02T10:00:00Z",
+  "type": "PURCHASE",
+  "user_id": "u-test-99",
+  "session_id": "s-test-abc",
+  "payload": {
+    "product_id": "PROD-X101",
+    "value": 1250.99,
+    "currency": "USD",
+    "ip_address": "203.0.113.45",
+    "payment_method": "credit_card"
+  }
+}

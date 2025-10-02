@@ -1,0 +1,92 @@
+# File: .github/workflows/cd.yml
+
+name: CD - Deploy to Kubernetes
+
+# This workflow runs only after a successful merge to the 'main' branch
+# and is explicitly dependent on the 'ci.yml' workflow finishing successfully.
+on:
+  push:
+    branches: [ "main" ]
+
+# Define environment variables used throughout the job
+env:
+  REGISTRY: ghcr.io # Using GitHub Container Registry (GCR) as an example
+  IMAGE_TAG: ${{ github.sha }} # Use the commit SHA as a unique, immutable tag
+  K8S_CONTEXT: production-cluster # Name of the K8s context to deploy to
+
+jobs:
+  deploy:
+    name: Build, Push, and Deploy
+    runs-on: ubuntu-latest
+    # Requires the CI job to have passed before starting deployment
+    needs: build-and-test 
+
+    # Permissions needed for GCR login and Kubernetes actions
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # Required for secure OIDC authentication with cloud K8s (e.g., GKE, EKS)
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      
+    # --- Docker Login & Metadata ---
+    
+    - name: Docker Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # --- 1. Build and Push Go Collector Image ---
+    
+    - name: Build and Push Collector Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.go
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}/collector:${{ env.IMAGE_TAG }}
+        # Cache saves time on subsequent builds
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # --- 2. Build and Push Python Analyzer Image ---
+    
+    - name: Build and Push Analyzer Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.python
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}/analyzer:${{ env.IMAGE_TAG }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # --- 3. Kubernetes Deployment ---
+
+    - name: Set up Kubeconfig (Placeholder)
+      # In a real scenario, this step would configure the Kubernetes CLI (kubectl) 
+      # using credentials stored in GitHub Secrets or OIDC for cloud providers.
+      run: |
+        echo "::warning::This is a placeholder. Add your cloud-specific or cluster login commands here."
+        # Example for setting up a cluster context:
+        # gcloud container clusters get-credentials ${K8S_CLUSTER_NAME} --zone ${K8S_CLUSTER_ZONE} --project ${K8S_PROJECT}
+
+    - name: Deploy to Kubernetes
+      uses: kodermax/kubectl-apply-action@master
+      with:
+        # Use a secret containing the base64 encoded Kubeconfig file
+        kubeconfig: ${{ secrets.KUBE_CONFIG_DATA }} 
+        # Apply all YAML files in the k8s directory
+        # This will deploy 'collector-deploy.yaml' and 'analyzer-deploy.yaml' (if it existed)
+        path: deployments/k8s/
+        
+    - name: Update Collector Deployment Image
+      # Use kubectl to update the image tag in the existing collector deployment
+      run: |
