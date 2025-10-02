@@ -1,0 +1,16 @@
+# Test Configuration for Microservices (Isolated Testing Environment)
+
+service:
+  name: "Wizard-Analytics-Test"
+  environment: "test"
+  log_level: "WARN" # Reduced verbosity for clean test runs
+
+kafka:
+  broker: "localhost:9092" # Typically mocks or local single instance for testing
+  topic_events: "events_test" # Dedicated topic to prevent data contamination
+
+database:
+  type: "mongodb"
+  host: "localhost:27017"
+  name_raw: "wizard_raw_test" # Dedicated test database
+  name_analysis: "wizard_analysis_test" # Dedicated test database
