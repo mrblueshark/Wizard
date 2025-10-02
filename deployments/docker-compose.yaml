@@ -1,0 +1,79 @@
+# Docker Compose Orchestration for Wizard Analytics Microservices
+
+services:
+  # --- 1. MongoDB Database ---
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+
+  # --- 2. Zookeeper (Kafka prerequisite) ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # --- 3. Kafka Broker ---
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Allows Kafka to be accessed from outside Docker (on 9092)
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9093,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      # Create the 'events' topic on startup
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  # --- 4. Go Collector Microservice (Producer) ---
+  collector:
+    build:
+      context: .
+      dockerfile: go/Dockerfile # Points to the Go Dockerfile we fixed
+    container_name: collector
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BROKER: kafka:9093 # Internal Kafka port
+      KAFKA_TOPIC: events
+      RUN_INTERVAL_MS: 1000 # Send an event every 1 second
+    restart: on-failure
+
+  # --- 5. Python Analyzer Microservice (Consumer) ---
+  analyzer:
+    build:
+      context: .
+      dockerfile: analyzer/Dockerfile
+    container_name: analyzer
+    depends_on:
+      - kafka
+      - mongo
+    environment:
+      KAFKA_BROKER: kafka:9093 # Internal Kafka port
+      KAFKA_TOPIC: events
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_ANALYSIS_DB: wizard_analysis_dev
+      LOG_LEVEL: INFO
+    restart: on-failure
+
+volumes:
+  mongo-data:
