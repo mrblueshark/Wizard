@@ -13,8 +13,8 @@ echo "=========================================================="
 echo "--- 1.1: Running Go Collector Tests ---"
 # Navigate to the Go directory
 cd go
-# Run all Go tests recursively, showing verbose output
-go test ./... -v
+# FIX: Use -mod=readonly to tell Go to respect go.mod and ignore vendoring inconsistencies.
+go test ./... -v -mod=readonly 
 
 # Return to the root directory
 cd ..
@@ -23,12 +23,10 @@ echo "✅ Go Collector tests passed."
 
 # --- 2. Python Analyzer Service Tests ---
 echo "--- 2.1: Running Python Analyzer Tests (using Pytest) ---"
-# We assume 'pytest' is installed in the environment (e.g., via pyproject.toml dev dependencies)
-
 # Run Pytest in the Python directory, pointing to the 'tests' folder
 pytest python/tests
 echo "✅ Python Analyzer tests passed."
 
 echo "=========================================================="
-echo " All Project Tests Complete. Success!"
+echo " All Project Tests Complete. Commit this fix and push!"
 echo "=========================================================="
