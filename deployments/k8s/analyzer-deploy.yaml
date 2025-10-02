@@ -1,0 +1,48 @@
+# Kubernetes Deployment for the Python Analyzer Service
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analyzer-deployment
+  labels:
+    app: analyzer
+spec:
+  # Run two replicas for high availability
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analyzer
+  template:
+    metadata:
+      labels:
+        app: analyzer
+    spec:
+      containers:
+      - name: analyzer
+        # Replace YOUR_DOCKER_IMAGE_PATH with the actual path to your built image
+        image: wizard-analyzer:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080 # Assuming the analyzer might expose a readiness/health check port
+        env:
+        - name: KAFKA_BROKER
+          value: "kafka-service:9092" # Assumes a Kubernetes Service named 'kafka-service'
+        - name: KAFKA_TOPIC
+          value: "events"
+        - name: MONGODB_URI
+          value: "mongodb://mongo-service:27017" # Assumes a Kubernetes Service named 'mongo-service'
+        - name: MONGODB_ANALYSIS_DB
+          value: "wizard_analysis"
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        # Readiness Probe: Checks if the container is ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /health # Hypothetical health check endpoint
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
