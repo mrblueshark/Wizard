@@ -1,0 +1,17 @@
+# Development Configuration for Microservices (Local Docker Environment)
+
+service:
+  name: "Wizard-Analytics-Dev"
+  environment: "development"
+  log_level: "DEBUG" # Increased verbosity for easier debugging
+
+kafka:
+  broker: "kafka:9092" # Use the service name defined in docker-compose for inter-container communication
+  topic_events: "events"
+
+database:
+  type: "mongodb"
+  # Use the service name defined in docker-compose
+  host: "mongo:27017" 
+  name_raw: "wizard_raw_dev"
+  name_analysis: "wizard_analysis_dev"
