@@ -1,4 +1,4 @@
-# 🧙 Wizard: Cross-Language Data Processing Platform
+# Wizard: Cross-Language Data Processing Platform
 
 ## 🌟 Project Overview
 The **Wizard** project is a high-performance, distributed application designed for real-time data ingestion, analysis, and processing. It employs a microservices architecture utilizing the best-fit language for each task:
