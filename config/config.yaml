@@ -1,0 +1,27 @@
+# Base Configuration for Wizard Analytics Services
+
+# This file defines global defaults that are typically overridden
+# by environment-specific files (dev/config.yaml, prod/config.yaml).
+
+service:
+  # The base name for the service cluster
+  name: "Wizard-Analytics-Base"
+  # Default environment, should be overridden
+  environment: "default"
+  # Default log level, typically INFO
+  log_level: "INFO" 
+
+kafka:
+  # Default broker connection (often overridden to point to local Docker or production)
+  broker: "localhost:9092"
+  # Default topic name for raw events
+  topic_events: "events"
+
+database:
+  type: "mongodb"
+  # Default host/port (often overridden)
+  host: "localhost:27017" 
+  # Base database names to be extended by environment suffixes
+  name_raw: "wizard_raw"
+  name_analysis: "wizard_analysis"
+  
